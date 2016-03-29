@@ -25,20 +25,79 @@
 //                                                                                              //
 // Visit http://wwww.smallrobots.it for tutorials and videos                                    //
 //                                                                                              //
+// Credits                                                                                      //
+// The Formula Ev3 is built with Lego Mindstorms Ev3 retail set                                 //
+// Building instructions can be found on                                                        //
+// "The Lego Mindstorms Ev3 Discovery Book" of Laurens Valk                                     //
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
+using SmallRobots.Ev3ControlLib.Menu;
+using MonoBrickFirmware.Display;
+using MonoBrickFirmware.Movement;
+using MonoBrickFirmware.Display.Menus;
 
 namespace SmallRobots.FormulaEv3
 {
     class Program
     {
-        static void Main(string[] args)
+        #region Static Fields
+        private static int previousSteeringValue = 0;
+        #endregion
+
+        static public MenuContainer container;
+
+        public static void Main(string[] args)
         {
+            Menu menu = new Menu("Formula Ev3");
+            container = new MenuContainer(menu);
+            menu.AddItem(new ItemWithNumericInput("Calibrate Steering", 0, CalibrateSteering, -30, 30));
+            menu.AddItem(new MainMenuItem("Start", Start_OnEnterPressed));
+            menu.AddItem(new MainMenuItem("Quit", Quit_OnEnterPressed));
+
+            container.Show();
         }
+
+        public static void TerminateMenu()
+        {
+            container.Terminate();
+        }
+
+        public static void CalibrateSteering(int newValue)
+        {
+            sbyte maxSpeed = 10;
+            sbyte speed = 0;
+            Motor Motor = new Motor(MotorPort.OutA);
+
+            if (newValue > previousSteeringValue)
+            {
+                speed = (sbyte)-maxSpeed;
+            }
+            else
+            {
+                speed = (sbyte)maxSpeed;
+            }
+            previousSteeringValue = newValue;
+
+            Motor.SpeedProfileTime(speed, 100, 100, 100, true);
+        }
+
+        public static void Start_OnEnterPressed()
+        {
+            container.SuspendButtonEvents();
+            FormulaEv3 FormulaEv3 = new FormulaEv3();
+            FormulaEv3.Start();
+            container.ResumeButtonEvents();
+        }
+
+        public static void Quit_OnEnterPressed()
+        {
+            LcdConsole.Clear();
+            LcdConsole.WriteLine("Terminating");
+            // Wait a bit
+            Thread.Sleep(1000);
+            TerminateMenu();
+        }
+
     }
 }
