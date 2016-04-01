@@ -259,7 +259,12 @@ namespace SmallRobots.FormulaEv3
     public class IRRemoteTask : PeriodicTask
     {
         #region Fields
+        /// <summary>
+        /// Last command received from the Ev3 IR Remote
+        /// </summary>
         byte remoteCommand;
+
+        bool beaconActivated; 
         #endregion
 
         #region Constructors
@@ -270,6 +275,7 @@ namespace SmallRobots.FormulaEv3
         {
             // Fields initialization
             remoteCommand = 0;
+            beaconActivated = false;
 
             // Set the action
             Action = OnTimer;
@@ -282,6 +288,17 @@ namespace SmallRobots.FormulaEv3
         #region Private methods
         private void OnTimer(Robot robot)
         {
+            if (beaconActivated && ((FormulaEv3)robot).irSensor.ReadBeaconLocation().Distance > -100)
+            {
+                // Don't change Ev3 IR Sensor mode
+                return;
+            }
+            else
+            { 
+                // Ev3 IR Sensor mode can be changed because it's not detected anymore
+                beaconActivated = false;
+            }
+
             remoteCommand = ((FormulaEv3)robot).irSensor.ReadRemoteCommand();
             switch (remoteCommand)
             {
@@ -308,6 +325,7 @@ namespace SmallRobots.FormulaEv3
                     break;
                 case 9:
                     ((FormulaEv3)robot).direction = Direction.Beacon_ON;
+                    beaconActivated = true;
                     break;
                 default:
                     ((FormulaEv3)robot).direction = Direction.Stop;
@@ -392,21 +410,18 @@ namespace SmallRobots.FormulaEv3
             {
                 case Direction.Beacon_ON :
                     // Read the beacon distance and location
-                    ((FormulaEv3)robot).irSensor.Mode = IRMode.Seek;
                     BeaconLocation bl = ((FormulaEv3)robot).irSensor.ReadBeaconLocation();
                     LcdConsole.WriteLine("Loc: " + bl.Location.ToString());
                     LcdConsole.WriteLine("Dis: " + bl.Distance.ToString());
+                    ((FormulaEv3)robot).commandedSteeringAngle = - 3.0f * bl.Location;
                     if (bl.Distance >= 10)
                     {
-                        ((FormulaEv3)robot).commandedSteeringAngle = (Math.Abs(bl.Location) > 2) ? -bl.Location : 0;
-                        LcdConsole.WriteLine(((FormulaEv3)robot).commandedSteeringAngle.ToString());
-                        ((FormulaEv3)robot).leftEngine.SetPower(-0);
-                        ((FormulaEv3)robot).rightEngine.SetPower(-0);
+                        ((FormulaEv3)robot).leftEngine.SetPower(-50);
+                        ((FormulaEv3)robot).rightEngine.SetPower(-50);
                     }
                     else
                     {
                         // Too close
-                        ((FormulaEv3)robot).commandedSteeringAngle = 0;
                         ((FormulaEv3)robot).leftEngine.SetPower(0);
                         ((FormulaEv3)robot).rightEngine.SetPower(0);
                     }
